@@ -5,22 +5,19 @@ var UpdatedIssueStream = require('./updated-issue-stream');
 var IssueCommentStream = require('./issue-comment-stream');
 
 var github = new GitHubApi({
-    // required
-    version: '3.0.0',
-    // optional
-    protocol: 'https',
-    timeout: 10000,
-    headers: {
-        'user-agent': 'My-Cool-GitHub-App' // GitHub is happy with a unique user agent
-    }
-});
+               // required
+               version: '3.0.0',
+               // optional
+               protocol: 'https',
+               timeout: 10000,
+               headers: {
+                 'user-agent': 'My-Cool-GitHub-App' // GitHub is happy with a unique user agent
+               }
+             });
 
-github.authenticate({
-    type: 'basic',
-    username: 'piscisaureus',
-    password: require('fs').readFileSync('.password', 'utf8').replace(/\s/g, '')
-});
-
+var githubAuthInfo = require('./.github-auth.json');
+github.authenticate(githubAuthInfo);
+delete githubAuthInfo;
 
 var issueStream = new UpdatedIssueStream(github, { filter: 'mentioned', state: 'all' });
 
