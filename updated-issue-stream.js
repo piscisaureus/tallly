@@ -121,3 +121,4 @@ UpdatedIssueStream.prototype._onIssues = function(err, issues) {
 
   this._pollTimer = setTimeout(this._poll.bind(this), this._pollDelay);
 };
+

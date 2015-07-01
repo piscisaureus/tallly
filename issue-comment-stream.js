@@ -1,8 +1,14 @@
 
 module.exports = IssueCommentStream;
 
+var assert = require('assert');
+var inherits = require('util').inherits;
+var Readable = require('stream').Readable;
+
 
 function IssueCommentStream(client, issue) {
+  Readable.call(this, { objectMode: true });
+
   this._client = client;
   this._issue = issue;
 
@@ -14,6 +20,7 @@ function IssueCommentStream(client, issue) {
   this._retryDelay = 60 * 1000;
 }
 
+inherits(IssueCommentStream, Readable);
 
 IssueCommentStream.prototype._read = function() {
   var next = this._queue.shift();
@@ -70,6 +77,3 @@ IssueCommentStream.prototype._onComments = function(err, comments) {
   var next = comments.shift() || null;
   this.push(next);
 };
-
-
-

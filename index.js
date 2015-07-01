@@ -2,6 +2,7 @@
 var assert = require('assert');
 var GitHubApi = require('github');
 var UpdatedIssueStream = require('./updated-issue-stream');
+var IssueCommentStream = require('./issue-comment-stream');
 
 var github = new GitHubApi({
     // required
@@ -21,10 +22,26 @@ github.authenticate({
 });
 
 
-var stream = new UpdatedIssueStream(github, { filter: 'mentioned', state: 'all' });
-stream.on('data', function(data) {
-  console.log(data.updated_at, data.url.replace('https://api.github.com/', ''));
+var issueStream = new UpdatedIssueStream(github, { filter: 'mentioned', state: 'all' });
+
+issueStream.on('data', function(issue) {
+  issueStream.pause();
+
+  console.log(issue.title);
+
+  var commentStream = new IssueCommentStream(github, issue);
+
+  commentStream.on('data', function(comment) {
+    console.log('  %s', comment.body.slice(0, 72).replace(/[\r\n]/g, ' '));
+  });
+
+  commentStream.on('end', function() {
+    issueStream.resume();
+  });
 });
+
+issueStream.resume();
+
 
 
 /*
