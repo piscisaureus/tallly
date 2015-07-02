@@ -9,7 +9,7 @@ var Readable = require('stream').Readable;
 
 
 function UpdatedIssueStream(client, query, state) {
-  Readable.call(this, { objectMode: true });
+  Readable.call(this, { objectMode: true, highWaterMark: 0 });
 
   this._client = client;
   this._fetching = false;
@@ -19,15 +19,31 @@ function UpdatedIssueStream(client, query, state) {
   this._fetching = false;
   this._query = query;
 
+  this._initState(state);
+}
+
+inherits(UpdatedIssueStream, Readable);
+
+
+UpdatedIssueStream.prototype._initState = function(state) {
   this._etag = (state && state.etag) || null;
   this._since = (state && state.since) || null;
   this._page = (state && state.page) || 1;
   this._processedIssues = (state && state.processedIssues) || {};
   this._queue = (state && state.queue) || [];
-}
+};
 
-inherits(UpdatedIssueStream, Readable);
 
+UpdatedIssueStream.prototype.getState = function() {
+  var state = {
+    etag: this._etag,
+    since: this._since,
+    page: this._page,
+    processedIssues: this._processedIssues,
+    queue: this._queue
+  };
+  return state;
+};
 
 UpdatedIssueStream.prototype._read = function() {
   var chunk = this._queue.shift();

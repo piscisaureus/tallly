@@ -1,39 +1,59 @@
 
 var assert = require('assert');
+var fs = require('fs');
 var GitHubApi = require('github');
 var UpdatedIssueStream = require('./updated-issue-stream');
 var IssueCommentStream = require('./issue-comment-stream');
 
-var github = new GitHubApi({
-               // required
-               version: '3.0.0',
-               // optional
-               protocol: 'https',
-               timeout: 10000,
-               headers: {
-                 'user-agent': 'My-Cool-GitHub-App' // GitHub is happy with a unique user agent
-               }
-             });
+// Create github client.
+var githubClientOptions = {
+  version: '3.0.0',
+  // optional
+  protocol: 'https',
+  timeout: 10000,
+  headers: { 'user-agent': 'My-Cool-GitHub-App' }
+};
+var githubClient = new GitHubApi(githubClientOptions);
 
-var githubAuthInfo = require('./.github-auth.json');
-github.authenticate(githubAuthInfo);
+// Authenticate to github;
+var data = fs.readFileSync('.github-auth.json', 'utf8');
+var githubAuthInfo = JSON.parse(data);
+githubClient.authenticate(githubAuthInfo);
 delete githubAuthInfo;
 
-var issueStream = new UpdatedIssueStream(github, { filter: 'mentioned', state: 'all' });
+// Try to load processing state from a file.
+var githubSyncState;
+try {
+  data = fs.readFileSync('.github-sync-state.json', 'utf8');
+  githubSyncState = JSON.parse(data);
+} catch (err) {
+  if (err.code !== 'ENOENT')
+    throw err;
+  githubSyncState = null;
+}
+
+// Create issue update stream.
+var query = { filter: 'mentioned', state: 'all' };
+var issueStream = new UpdatedIssueStream(githubClient, query, githubSyncState);
 
 issueStream.on('data', function(issue) {
   issueStream.pause();
 
   console.log(issue.title);
 
-  var commentStream = new IssueCommentStream(github, issue);
+  var commentStream = new IssueCommentStream(githubClient, issue);
 
   commentStream.on('data', function(comment) {
     console.log('  %s', comment.body.slice(0, 72).replace(/[\r\n]/g, ' '));
   });
 
   commentStream.on('end', function() {
-    issueStream.resume();
+    var data = JSON.stringify(issueStream.getState());
+    fs.writeFile('.github-sync-state.json', data, function(err) {
+      if (err)
+        throw err;
+      issueStream.resume();
+    });
   });
 });
 
